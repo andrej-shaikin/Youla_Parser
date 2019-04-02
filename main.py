@@ -66,6 +66,7 @@ class BOT:
     def checkDuplicat(self, phone, name, numbers):
         conn = sqlite3.connect("parser.db")
         cursor = conn.cursor()
+        #print("phone: "+str(phone)+"\nname: "+str(name)+"\n")
         sql = "SELECT * FROM phone_"+self.SelectCity.title()+' WHERE phone="'+phone+'"'
         cursor.execute(sql)
         res = cursor.fetchall()
@@ -90,14 +91,49 @@ class BOT:
 
     def pars_page(self, url, numbers):
         self.br.get(url)
+        #print(html)
         html = self.br.page_source
         html = bs(html, 'html.parser')
+        indx = str(html).find("Показать номер")-1
+        
+        span = ""
+        while indx >= 0:
+            span += str(html)[indx]
+            indx -= 1
+            if str(html)[indx] == '<':break
+
+        
+        span  = span[::-1]
+        #print("Begin: "+span)
+        start_ = 0
+        end_ =0
+        for i in range(len(span)):
+            if span[i] == '"':
+                start_ = i+1
+                break
+        for i in range(start_+1, len(span)):
+            if span[i] == '"':
+                end_  =i
+                break
+        span = span[start_:end_]
+        #print("End: "+span)
+        self.br.save_screenshot("side.png")
+        btn = self.br.find_element_by_xpath('//*[@id="app"]/div[1]/div[3]/section/div/div/div/div[1]/div[2]/ul/li[1]/div/div[2]/button')
+        btn.click()
+        self.br.save_screenshot("side1.png")
+        html = self.br.page_source
+        html = bs(html, 'html.parser')         
+                
         phone = str(html)[str(html).find('tel:'):str(html).find('tel:')+16]
         phone = self.refactorPhone(phone[phone.find(':')+1:])
-        name = str(html)[str(html).find('/user/')+2:];	name=name[name.find('/user'):]; name=name[name.find('">'):name.find('</')]
-        name = name[2:len(name)-1];	name=name[:name.find('(')]
-        system('cls')
-        self.checkDuplicat(phone, name, numbers)
+        name = self.br.find_element_by_xpath('//*[@id="app"]/div[1]/div[3]/section/div/div/div/div[1]/div[4]/ul/li[1]/a/div/div[1]/div/div[2]/p')
+       # print(name.text)
+        #name = name.replace('&nbsp;', ' ')
+        
+       # system('cls')
+        #print(html)
+        print( str(phone)+" | "+str(name.text))
+        if phone != None:self.checkDuplicat(phone, name.text, numbers)
         
             
     def pars_main_page(self, numbers, checkDB=1):
@@ -109,7 +145,7 @@ class BOT:
                 cursor.execute(sql)
                 conn.commit()
                 conn.close()
-            except:
+            except sqlite3.OperationalError:
                 sql = "CREATE TABLE phone_"+self.SelectCity.title()+" (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, name VARCHAR(100) NOT NULL, phone VARCHAR (50) NOT NULL) "
                 cursor.execute(sql)
                 conn.commit()
